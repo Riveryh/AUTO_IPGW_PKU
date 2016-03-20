@@ -37,7 +37,8 @@ namespace AUTO_IPGW
         private void button2_Click(object sender, EventArgs e)
         {
             Program.saveUserInfo(userName.Text, passWord.Text);
-            Program.IPGW_connect(Program.GLOBAL, this.userName.Text, this.passWord.Text);
+            bool suc = Program.IPGW_connect(Program.GLOBAL, this.userName.Text, this.passWord.Text);
+            if (!suc) return;
             this.connInfo.Hide();
             if (this.checkBox1.Checked)
             {
@@ -148,7 +149,8 @@ namespace AUTO_IPGW
                 Thread.Sleep(1000);
                 second--;
             }
-            Program.IPGW_connect(Program.DISCONNECT, this.userName.Text, this.passWord.Text);
+            Program.IPGW_connect(Program.FREE, this.userName.Text, this.passWord.Text);
+            this.connInfo.Hide();
         }
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
