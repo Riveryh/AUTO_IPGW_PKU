@@ -109,6 +109,8 @@ namespace AUTO_IPGW
                     filename = Path.GetDirectoryName(loadFile) + "//Update_" + Path.GetFileNameWithoutExtension(loadFile) + exten;
                 wc.DownloadFile(download, filename);
                 wc.Dispose();
+                //File.Move(loadFile, loadFile + ".delete");                    // 1
+                //File.Copy(filename, );                                  // 2
                 isFinish();
             }
             catch

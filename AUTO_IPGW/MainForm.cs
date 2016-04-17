@@ -178,8 +178,15 @@ namespace AUTO_IPGW
                 Thread.Sleep(1000);
                 second--;
             }
+            try
+            {
+                this.connInfo.Hide();
+            }
+            catch (Exception ex)
+            {
+            }
             IPGW.IPGW_connect(IPGW.FREE, this.userName.Text, this.passWord.Text);
-            this.connInfo.Hide();
+            this.notifyIcon1.ShowBalloonTip(1000, "提示", IPGW.parseCode[IPGW.lastResultCode], ToolTipIcon.Info);
         }
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
@@ -222,9 +229,17 @@ namespace AUTO_IPGW
         private void notifyIcon1_MouseDoubleClick(object sender, MouseEventArgs e)
         {
             //notifyIcon1.Visible = false;
-            this.Show();
-            WindowState = FormWindowState.Normal;
-            this.Focus();
+            if (WindowState == FormWindowState.Minimized)
+            {
+                this.Show();
+                WindowState = FormWindowState.Normal;
+                this.Focus();
+            }
+            else if (WindowState == FormWindowState.Normal)
+            {
+                WindowState = FormWindowState.Minimized;
+                this.Hide();
+            }
         }
 
         private void notifyIcon1_MouseClick(object sender, MouseEventArgs e)
@@ -270,7 +285,7 @@ namespace AUTO_IPGW
 
         void app_UpdateFinish()
         {
-            MessageBox.Show("更新完成，请重新启动程序！", "Update", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("新版程序已下载到程序文件目录，请手动更新", "Update", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
 
