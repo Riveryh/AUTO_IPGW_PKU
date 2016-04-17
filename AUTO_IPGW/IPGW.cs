@@ -8,11 +8,12 @@ using System.Net.Security;
 using System.Text;
 using System.IO;
 using System.Security.Cryptography.X509Certificates;
-using System.Security.Cryptography;  
+using System.Security.Cryptography;
+using Microsoft.Win32;  
 
 namespace AUTO_IPGW
 {
-    static class Program
+    static class IPGW
     {
 
         public const int FREE = 1;
@@ -20,6 +21,32 @@ namespace AUTO_IPGW
         public const int DISCONNECT = 3;
         public const int DIS_ALL = 4;
 
+        public enum CONNECTIION_RESULT_CODE
+        {
+            SUCCESS,
+            FAILED,
+            TIME_OUT,
+            NETWORK_ERROR,
+            FREE_SUCCESS,
+            GLOBAL_SUCCESS,
+            DISCONNECT_SUCCESS,
+            AUTHENTAION_ERROR
+        };
+
+        public static CONNECTIION_RESULT_CODE lastResultCode;
+
+        public static Dictionary<CONNECTIION_RESULT_CODE, string> parseCode
+            = new Dictionary<CONNECTIION_RESULT_CODE, string>
+        {
+            {CONNECTIION_RESULT_CODE.SUCCESS, "连接成功"},
+            {CONNECTIION_RESULT_CODE.FAILED, "连接失败"},
+            {CONNECTIION_RESULT_CODE.TIME_OUT, "连接超时"},
+            {CONNECTIION_RESULT_CODE.FREE_SUCCESS,"免费网连接成功"},
+            {CONNECTIION_RESULT_CODE.GLOBAL_SUCCESS,"收费网连接成功"},
+            {CONNECTIION_RESULT_CODE.DISCONNECT_SUCCESS,"断开成功"},
+            {CONNECTIION_RESULT_CODE.NETWORK_ERROR,"网络故障"},
+            {CONNECTIION_RESULT_CODE.AUTHENTAION_ERROR,"用户名或密码错误"}
+        };
 
         public static string balance_hours;
 
@@ -53,7 +80,8 @@ namespace AUTO_IPGW
             }
             catch (Exception e)
             {
-                MessageBox.Show("Connection Failed!\n"+e.Message);
+                //MessageBox.Show("Connection Failed!\n"+e.Message);
+                lastResultCode = CONNECTIION_RESULT_CODE.NETWORK_ERROR;
                 return false;
             }
 
@@ -93,7 +121,8 @@ namespace AUTO_IPGW
             //如果未登录成果返回错误提示
             if (!loggedIn)
             {
-                MessageBox.Show("Password or username incorrect!");
+                //MessageBox.Show("Password or username incorrect!");
+                lastResultCode = CONNECTIION_RESULT_CODE.AUTHENTAION_ERROR;
                 return false;
             }
             response.Close();
@@ -121,7 +150,8 @@ namespace AUTO_IPGW
             {
                 if (!(option == DISCONNECT || option == DIS_ALL))
                 {
-                    MessageBox.Show("Connection");
+                    //MessageBox.Show("联网失败");
+                    lastResultCode = CONNECTIION_RESULT_CODE.FAILED;
                     return false;
                 }
             }
@@ -138,74 +168,75 @@ namespace AUTO_IPGW
             //MessageBox.Show(ret);*/
 
             
-            FileStream MyFileStream1 = new FileStream(@"output.html", FileMode.Create);
-            StreamWriter sw = new StreamWriter(MyFileStream1);
-            sw.Write(ret);
+            //FileStream MyFileStream1 = new FileStream(@"output.html", FileMode.Create);
+            //StreamWriter sw = new StreamWriter(MyFileStream1);
+            //sw.Write(ret);
             //关闭StreamWriter 
             //sw.Flush();
-            sw.Close();
+            //sw.Close();
             //关闭FileStream
             //MyFileStream1.Flush();
-            MyFileStream1.Close();
+            //MyFileStream1.Close();
             
 
             //弹出相应提示
             switch (option)
             {
                 case FREE:
-                    MessageBox.Show("连接免费网成功!"); break;
+                    //MessageBox.Show("连接免费网成功!"); break;
+                    lastResultCode = CONNECTIION_RESULT_CODE.FREE_SUCCESS; break;
                 case GLOBAL:
                     if (isGlobal)
                     {
-                        MessageBox.Show("连接收费网成功!\n已用："+balance_hours); break;
+                        //MessageBox.Show("连接收费网成功!\n本月剩余："+balance_hours); break;
+                        lastResultCode = CONNECTIION_RESULT_CODE.GLOBAL_SUCCESS;
+                        parseCode[CONNECTIION_RESULT_CODE.GLOBAL_SUCCESS] = ("收费网连接成功\n本月剩余："+ balance_hours); 
+                        break;
                     }
                     else
                     {
-                        MessageBox.Show("连接成功!\n但收费网连接失败!"); break;
+                        //MessageBox.Show("连接成功!\n但收费网连接失败!"); break;
+                        lastResultCode = CONNECTIION_RESULT_CODE.FREE_SUCCESS;
+                        break;
                     }
-
                 case DISCONNECT:
-                    MessageBox.Show("断开成功!");break;
+                    //MessageBox.Show("断开成功!");break;
+                    lastResultCode = CONNECTIION_RESULT_CODE.DISCONNECT_SUCCESS;
+                    break;
                 case DIS_ALL:
-                    MessageBox.Show("断开所有链接成功!"); break;
+                    //MessageBox.Show("断开所有链接成功!"); break;
+                    lastResultCode = CONNECTIION_RESULT_CODE.DISCONNECT_SUCCESS;
+                    break;
                 default:
-
+                    lastResultCode = CONNECTIION_RESULT_CODE.FAILED;
                     return false;
             }
             return true;
         }
 
-        static public bool saveUserInfo(string username, string password, string path = "data.inf")
+        static public bool saveUserInfo(string username, string password)
         {
-            FileStream MyFileStream1 = new FileStream(path, FileMode.Create);
-            StreamWriter sw = new StreamWriter(MyFileStream1);
-            sw.WriteLine(Encrypt(username));
-            sw.WriteLine(Encrypt(password));
-            sw.Close();
-            MyFileStream1.Close();
+            RegistryKey key = Registry.CurrentUser;
+            RegistryKey software = key.CreateSubKey("software\\AUTO_IPGW");
+            software.SetValue("username",Encrypt(username));
+            software.SetValue("password",Encrypt(password));
             return true;
         }
 
-        static public bool readUserInfo(ref string username, ref string password, string path = "data.inf")
+        static public bool readUserInfo(ref string username, ref string password)
         {
-            FileStream MyFileStream1;
+            RegistryKey key = Registry.CurrentUser;
+            RegistryKey software;
             try
             {
-                MyFileStream1 = new FileStream(path, FileMode.Open);
+                software = key.OpenSubKey("software\\AUTO_IPGW", true);
+                username = Decrypt(software.GetValue("username").ToString());
+                password = Decrypt(software.GetValue("password").ToString());
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return false;
             }
-            StreamReader sw = new StreamReader(MyFileStream1);
-            username = sw.ReadLine();
-            if (username == "") return false;
-            password = sw.ReadLine();
-            if (password == "") return false;
-            username = Decrypt(username);
-            password = Decrypt(password);
-            sw.Close();
-            MyFileStream1.Close();
             return true;
         }
 
@@ -216,7 +247,7 @@ namespace AUTO_IPGW
             return true; //总是接受  
         }
 
-
+        //local data encrption key
         static private string __key__ = "A39CN289A91JF8VN478XH9183JN59Z02";
 
         public static string Encrypt(string toEncrypt)
